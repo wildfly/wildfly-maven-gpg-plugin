@@ -36,8 +36,8 @@ under the License.
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
+                <groupId>org.wildfly</groupId>
+                <artifactId>wildfly-maven-gpg-plugin</artifactId>
                 <version>@project.version@</version>
                 <executions>
                     <execution>
