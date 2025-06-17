@@ -27,8 +27,9 @@ under the License.
     <relativePath />
   </parent>
 
-  <artifactId>maven-gpg-plugin</artifactId>
-  <version>3.2.8</version>
+  <groupId>org.wildfly</groupId>
+  <artifactId>wildfly-maven-gpg-plugin</artifactId>
+  <version>3.2.8.SP1-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>Apache Maven GPG Plugin</name>
@@ -39,25 +40,19 @@ under the License.
   </prerequisites>
 
   <scm>
-    <connection>scm:git:https://gitbox.apache.org/repos/asf/maven-gpg-plugin.git</connection>
-    <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/maven-gpg-plugin.git</developerConnection>
-    <tag>maven-gpg-plugin-3.2.8</tag>
-    <url>https://github.com/apache/maven-gpg-plugin/tree/${project.scm.tag}</url>
+    <connection>scm:git:git@github.com:wildfly/wildfly-maven-gpg-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:wildfly/wildfly-maven-gpg-plugin.git</developerConnection>
+    <tag>HEAD</tag>
+    <url>https://github.com/wildfly/wildfly-maven-gpg-plugin/tree/${project.scm.tag}</url>
   </scm>
   <issueManagement>
     <system>GitHub Issues</system>
-    <url>https://github.com/apache/maven-gpg-plugin/issues</url>
+    <url>https://github.com/wildfly/wildfly-maven-gpg-plugin/issues</url>
   </issueManagement>
   <ciManagement>
-    <system>Jenkins</system>
-    <url>https://ci-maven.apache.org/job/Maven/job/maven-box/job/maven-gpg-plugin/</url>
+    <system>GitHub Issues</system>
+    <url>https://github.com/wildfly/wildfly-maven-gpg-plugin/issues</url>
   </ciManagement>
-  <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>scm:svn:https://svn.apache.org/repos/asf/maven/website/components/${maven.site.path}</url>
-    </site>
-  </distributionManagement>
 
   <properties>
     <javaVersion>8</javaVersion>
@@ -66,6 +61,22 @@ under the License.
     <bouncycastleVersion>1.81</bouncycastleVersion>
     <project.build.outputTimestamp>2025-06-28T08:53:29Z</project.build.outputTimestamp>
     <resource.delimiter>@</resource.delimiter>
+
+    <version.gpg.plugin>3.2.8</version.gpg.plugin>
+    <version.nxrm3.plugin>1.0.7</version.nxrm3.plugin>
+
+    <!-- ***************** -->
+    <!-- Repository Deployment URLs -->
+    <!-- ***************** -->
+    <nexus.serverId>jboss</nexus.serverId>
+    <nexus.repository.release>releases</nexus.repository.release>
+    <nexus.repository.staging>wildfly-staging</nexus.repository.staging>
+    <nexus.repository.url>https://repository.jboss.org/nexus/</nexus.repository.url>
+    <nexus.staging.tag>wildfly-maven-gpg-plugin-${project.version}</nexus.staging.tag>
+
+    <!-- maven-gpg-plugin -->
+    <!-- set this to "error" to require a GPG agent-->
+    <gpg.pinEntryMode>loopback</gpg.pinEntryMode>
   </properties>
 
   <dependencies>
@@ -250,6 +261,57 @@ under the License.
             <keysMapLocation>${project.basedir}/pgp-keys-map.list</keysMapLocation>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <configuration>
+            <skip>true</skip>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-plugin-plugin</artifactId>
+          <configuration>
+            <goalPrefix>wfgpg</goalPrefix>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>${version.gpg.plugin}</version>
+          <configuration>
+            <useAgent>true</useAgent>
+            <gpgArguments>
+              <arg>--pinentry-mode</arg>
+              <arg>${gpg.pinEntryMode}</arg>
+            </gpgArguments>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nxrm3-maven-plugin</artifactId>
+          <version>${version.nxrm3.plugin}</version>
+          <configuration>
+            <serverId>${nexus.serverId}</serverId>
+            <nexusUrl>${nexus.repository.url}</nexusUrl>
+          </configuration>
+          <executions>
+            <execution>
+              <id>nexus-move</id>
+              <configuration>
+                <repository>${nexus.repository.staging}</repository>
+                <destinationRepository>${nexus.repository.release}</destinationRepository>
+                <tag>${nexus.staging.tag}</tag>
+              </configuration>
+            </execution>
+            <execution>
+              <id>nexus-delete</id>
+              <configuration>
+                <tag>${nexus.staging.tag}</tag>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -352,6 +414,44 @@ under the License.
                   <goal>integration-test</goal>
                   <goal>verify</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <!-- This is apache's release profile inherited from parents. -->
+      <id>apache-release</id>
+      <build>
+        <plugins>
+          <!-- Disable maven-deploy-plugin in favor of nxrm3-maven-plugin. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-deploy-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>default-deploy</id>
+                <!-- We configured skip=true in plugin-management; this is a 2nd line of defense -->
+                <phase>none</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nxrm3-maven-plugin</artifactId>
+            <extensions>true</extensions>
+            <executions>
+              <execution>
+                <id>nexus-deploy</id>
+                <goals>
+                  <goal>staging-deploy</goal>
+                </goals>
+                <phase>deploy</phase>
+                <configuration>
+                  <repository>${nexus.repository.staging}</repository>
+                  <tag>${nexus.staging.tag}</tag>
+                </configuration>
               </execution>
             </executions>
           </plugin>

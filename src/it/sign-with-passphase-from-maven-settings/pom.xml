@@ -43,8 +43,8 @@ under the License.
         <version>2.0.2</version>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-maven-gpg-plugin</artifactId>
         <version>@project.version@</version>
         <configuration>
           <!-- load passphrase from settings.xml -->
