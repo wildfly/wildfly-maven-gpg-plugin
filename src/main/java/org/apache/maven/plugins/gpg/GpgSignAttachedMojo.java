@@ -23,6 +23,10 @@ import javax.inject.Inject;
 import java.io.File;
 import java.util.List;
 
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.handler.ArtifactHandler;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -30,6 +34,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
+// import org.apache.maven.project.artifact.AttachedArtifact;
 
 /**
  * Sign project artifact, the POM, and attached artifacts with GnuPG for deployment.
@@ -58,6 +63,9 @@ public class GpgSignAttachedMojo extends AbstractGpgMojo {
     @Parameter(defaultValue = "${project.build.directory}/gpg", alias = "outputDirectory")
     private File ascDirectory;
 
+    // @Component
+    private final ArtifactHandlerManager artifactHandlerManager;
+
     /**
      * The maven project.
      */
@@ -69,9 +77,11 @@ public class GpgSignAttachedMojo extends AbstractGpgMojo {
     private final MavenProjectHelper projectHelper;
 
     @Inject
-    public GpgSignAttachedMojo(MavenProject project, MavenProjectHelper projectHelper) {
+    public GpgSignAttachedMojo(
+            MavenProject project, MavenProjectHelper projectHelper, ArtifactHandlerManager artifactHandlerManager) {
         this.project = project;
         this.projectHelper = projectHelper;
+        this.artifactHandlerManager = artifactHandlerManager;
     }
 
     @Override
@@ -100,11 +110,34 @@ public class GpgSignAttachedMojo extends AbstractGpgMojo {
 
             File signature = signer.generateSignatureForArtifact(item.getFile());
 
-            projectHelper.attachArtifact(
-                    project,
-                    item.getExtension() + AbstractGpgSigner.SIGNATURE_EXTENSION,
-                    item.getClassifier(),
-                    signature);
+            if (item.isSameGAV()) {
+                // Typical case; use the logic from maven-gpg-plugin
+                projectHelper.attachArtifact(
+                        project,
+                        item.getExtension() + AbstractGpgSigner.SIGNATURE_EXTENSION,
+                        item.getClassifier(),
+                        signature);
+            } else {
+                // Attach the signature file ourselves using the GAV data from the artifact whose file was signed
+                attachArtifact(item, item.getExtension() + AbstractGpgSigner.SIGNATURE_EXTENSION, signature);
+            }
         }
+    }
+
+    private void attachArtifact(FilesCollector.Item item, String artifactType, File artifactFile) {
+
+        ArtifactHandler handler = artifactHandlerManager.getArtifactHandler(artifactType);
+
+        final Artifact artifact = new DefaultArtifact(
+                item.getGroupId(),
+                item.getArtifactId(),
+                item.getVersion(),
+                item.getScope(),
+                artifactType,
+                item.getClassifier(),
+                handler);
+        artifact.setFile(artifactFile);
+        artifact.setResolved(true);
+        project.addAttachedArtifact(artifact);
     }
 }
