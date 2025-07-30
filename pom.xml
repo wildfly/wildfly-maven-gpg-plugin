@@ -29,7 +29,7 @@ under the License.
 
   <groupId>org.wildfly</groupId>
   <artifactId>wildfly-maven-gpg-plugin</artifactId>
-  <version>3.2.8.SP1-SNAPSHOT</version>
+  <version>3.2.8.SP1</version>
   <packaging>maven-plugin</packaging>
 
   <name>Apache Maven GPG Plugin</name>
