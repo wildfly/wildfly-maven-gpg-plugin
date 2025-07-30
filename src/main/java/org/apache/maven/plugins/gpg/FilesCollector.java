@@ -119,7 +119,13 @@ public class FilesCollector {
                 continue;
             }
 
-            items.add(new Item(file, artifact.getClassifier(), artifact.getExtension()));
+            if (isSameGAV(artifact)) {
+                // Typical case; use the logic from maven-gpg-plugin
+                items.add(new Item(file, artifact.getClassifier(), artifact.getExtension()));
+            } else {
+                // The attached artifact wants a distinct GAV; store that info
+                items.add(new Item(file, project.getArtifact().getScope(), artifact));
+            }
         }
 
         return items;
@@ -147,15 +153,34 @@ public class FilesCollector {
         return false;
     }
 
+    private boolean isSameGAV(Artifact artifact) {
+        return project.getGroupId().equals(artifact.getGroupId())
+                && project.getArtifactId().equals(artifact.getArtifactId())
+                && project.getVersion().equals(artifact.getVersion());
+    }
+
     public static class Item {
         private final File file;
+
+        private final Artifact separateArtifact;
         private final String classifier;
         private final String extension;
+        private final String scope;
 
         public Item(File file, String classifier, String extension) {
+            this(file, classifier, extension, null, null);
+        }
+
+        Item(File file, String scope, Artifact base) {
+            this(file, base.getClassifier(), base.getExtension(), base, scope);
+        }
+
+        private Item(File file, String classifier, String extension, Artifact separateArtifact, String scope) {
             this.file = requireNonNull(file);
             this.classifier = classifier == null || classifier.trim().isEmpty() ? null : classifier; // nullable
             this.extension = requireNonNull(extension);
+            this.separateArtifact = separateArtifact;
+            this.scope = scope;
         }
 
         /**
@@ -163,6 +188,26 @@ public class FilesCollector {
          */
         public File getFile() {
             return file;
+        }
+
+        boolean isSameGAV() {
+            return separateArtifact == null;
+        }
+
+        String getGroupId() {
+            return separateArtifact != null ? separateArtifact.getGroupId() : null;
+        }
+
+        String getArtifactId() {
+            return separateArtifact != null ? separateArtifact.getArtifactId() : null;
+        }
+
+        String getVersion() {
+            return separateArtifact != null ? separateArtifact.getVersion() : null;
+        }
+
+        public String getScope() {
+            return scope;
         }
 
         /**
