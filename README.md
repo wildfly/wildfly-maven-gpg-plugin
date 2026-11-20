@@ -14,6 +14,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
+This repository is now archived, since the problem it was created to resolve (see below) was fixed in Apache Maven GPG Plugin 3.28.
+
 Overview 
 ======================
 This is a hopefully short-lived fork of the [Apache Maven GPG Plugin](https://github.com/apache/maven-gpg-plugin), meant to work around an issue some WildFly ecosystem builds see when using `maven-gpg-plugin` in conjunction with Sonatype's [`nxrm3-maven-plugin`](https://github.com/sonatype/nxrm3-maven-plugin). It exists solely to work around that issue and allow affected WildFly projects to perform staged releases to a Nexus 3 repository. As soon as some other solution is found this project will be archived.
